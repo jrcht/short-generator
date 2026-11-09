@@ -1,0 +1,30 @@
+{
+  "title": "The deploy was not the cause",
+  "hook": "The outage started before the release.",
+  "audience": "Engineers who ship on Fridays",
+  "target_seconds": 35,
+  "transition": {
+    "type": "fade",
+    "duration": 0.25
+  },
+  "notes": "Cold open on the later line, then return to the proof.",
+  "avoid": ["welcome", "please follow us"],
+  "moments": [
+    {
+      "id": "hook",
+      "start": "00:18:12.400",
+      "end": "00:18:20.100",
+      "speaker": "speaker_1",
+      "quote": "The deploy was not the cause. The error budget was already gone.",
+      "why": "Cold open on the claim."
+    },
+    {
+      "id": "proof",
+      "start": "00:11:02.000",
+      "end": "00:11:15.500",
+      "speaker": "speaker_1",
+      "quote": "At 9:14 the queue was already ten minutes behind.",
+      "why": "A concrete time makes the claim believable."
+    }
+  ]
+}
