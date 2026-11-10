@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Cut short videos from long event-session recordings."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.32"]
+dependencies = ["requests>=2.32", "pillow>=10"]
 
 [project.scripts]
 shortgen = "shortgen.cli:main"

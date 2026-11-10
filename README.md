@@ -76,11 +76,29 @@ python -m shortgen cut videos/session.mp4
 | Rename speakers | Edit `speakers.json`, then `python -m shortgen transcript render <video>` | Word timings, briefs, shorts |
 | Different moments | Edit `brief/<name>.json`, then `brief check` and `cut` | Transcript |
 | Same moments, other join | `python -m shortgen cut <video> --transition wipeleft --transition-duration 0.4` | The brief file |
+| Trim, voice, subtitles | `python -m shortgen view <video>` | The transcript. See [Timeline editor](#timeline-editor). |
 | A second short | Write `brief/<name>.json` and `cut --name <name>` | The `main` short |
 
 `transcribe` without `--force` returns the current transcript when the file size and modification time match, and it does not call ElevenLabs. `cut` overwrites that short name. The previous decision log is kept in `shorts/<name>/history/`.
 
 `python -m shortgen path <video>` prints the slug, the transcript, the brief, and the short, and whether each file exists.
+
+## Timeline editor
+
+From the repository root, open the player on the session, or on a short that is already cut:
+
+```bash
+python -m shortgen view videos/session.mp4
+python -m shortgen view generated/<slug>/shorts/main/short.mp4
+```
+
+Either command prints a local URL and opens it in the browser. Pass `--no-open` to print the URL only, and `--port` when 8733 is taken. `--name` picks a short other than `main`.
+
+The session path is for trimming. The rendered-short path plays the finished file, and its timeline lists each piece that was joined: the opening, each moment, the watch card, and the ending. If the session file is not in `videos/`, that second command still opens the short. Putting the session file back is what unlocks trimming.
+
+Drag either edge of a moment to trim it, split it, or remove it. The transition, the voice level of the selected moment, and the subtitle lines sit under the picture. Save writes the brief. Render runs the same cut as `python -m shortgen cut`, including the opening, logo, watch card, and ending.
+
+The player previews the cuts from the session file. The transition and the burned subtitles are in the rendered file. Voice is a level from silent to 150%, stored on the moment as `gain`. Clearing a subtitle line drops it. `subtitles: false` in the brief leaves the lines off the render.
 
 ## Brief
 
@@ -137,10 +155,8 @@ Joins are re-encoded. A hard cut of separately encoded pieces can still glitch a
 
 These are the parts worth adding once the three steps are in use:
 
-- Burned-in captions for muted playback. `transcript.srt` is already written, so this can be its own step.
-- A 9:16 reframe. That needs a face or slide safe-area. Guessing the crop from a stage wide shot cuts the speaker off.
-- ElevenLabs' speaker library, so a known voice comes back with a name.
 - A music bed under the join.
+- ElevenLabs' speaker library, so a known voice comes back with a name.
 
 ## Tests
 

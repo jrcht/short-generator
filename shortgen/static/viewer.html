@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Short</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0c0c0c;
+      color: #f5f5f4;
+      font: 14px/1.45 ui-sans-serif, system-ui, sans-serif;
+    }
+    header, main { width: min(1080px, calc(100% - 48px)); margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      padding: 16px 0 12px;
+    }
+    h1 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+    #meta { margin: 4px 0 0; color: #9a9a96; }
+    .actions { display: flex; gap: 8px; }
+    button, select, input { font: inherit; color: inherit; }
+    button {
+      background: transparent;
+      border: 1px solid #3a3a36;
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button.solid { background: #f4f1ea; color: #161616; border-color: #f4f1ea; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 1px solid #f4f1ea;
+      outline-offset: 2px;
+    }
+    .frame { text-align: center; }
+    .stage {
+      position: relative;
+      display: block;
+      width: min(100%, 480px);
+      margin: 0 auto;
+      background: #000;
+      container-type: inline-size;
+    }
+    video {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #000;
+    }
+    #caption {
+      position: absolute;
+      left: 50%;
+      bottom: 7%;
+      transform: translateX(-50%);
+      max-width: 78%;
+      margin: 0;
+      padding: 0.28em 0.55em 0.34em;
+      background: rgba(0, 0, 0, 0.72);
+      border-radius: 10px;
+      color: #fff;
+      font-family: "Arial Black", Impact, sans-serif;
+      font-weight: 800;
+      font-size: clamp(14px, 4.4cqw, 42px);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+      text-align: center;
+      white-space: pre-line;
+      pointer-events: none;
+    }
+    .transport {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    #clock { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #length { color: #9a9a96; }
+    #timeline {
+      position: relative;
+      height: 72px;
+      margin-top: 8px;
+      user-select: none;
+      touch-action: none;
+    }
+    #timeline::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; top: 35px;
+      height: 1px;
+      background: #2a2a28;
+    }
+    .clip {
+      position: absolute;
+      top: 18px;
+      height: 36px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: #232320;
+      color: #f5f5f4;
+    }
+    .clip.selected { background: #f4f1ea; color: #161616; }
+    .clip.card { background: #1a1c22; color: #bdbdb8; }
+    .clip.card.selected { background: #d9d4c8; color: #161616; }
+    .clip .name {
+      display: block;
+      padding: 8px 12px 0;
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .handle {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      cursor: ew-resize;
+    }
+    .handle.left { left: 0; }
+    .handle.right { right: 0; }
+    .clip.selected .handle { background: rgba(0, 0, 0, 0.14); }
+    #playhead {
+      position: absolute;
+      top: 8px; bottom: 8px;
+      width: 1px;
+      background: #fff;
+      pointer-events: none;
+      z-index: 3;
+    }
+    #playhead::before {
+      content: "";
+      position: absolute;
+      top: 0; left: -3px;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .fields, .clipbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 22px;
+      align-items: center;
+      margin-top: 16px;
+    }
+    label { display: flex; gap: 8px; align-items: center; color: #d8d8d4; }
+    select, input[type="number"], input.time {
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid #3a3a36;
+      padding: 4px 0;
+    }
+    input.time { width: 9.2em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    input[type="number"] { width: 4.2em; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 120px; accent-color: #f4f1ea; }
+    #quote {
+      margin: 12px 0 0;
+      color: #9a9a96;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #lines { margin-top: 12px; display: grid; gap: 4px; max-height: 180px; overflow: auto; }
+    #lines input {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid #2a2a28;
+      padding: 6px 0;
+    }
+    #status { min-height: 1.2em; margin: 16px 0 0; }
+    #hint { color: #6f6f6b; margin: 8px 0 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="title">Short</h1>
+      <p id="meta"></p>
+    </div>
+    <div class="actions">
+      <button id="mode" type="button" hidden>Watch</button>
+      <button id="save" type="button">Save</button>
+      <button id="render" type="button" class="solid">Render</button>
+    </div>
+  </header>
+  <main>
+    <div class="frame">
+      <div class="stage">
+        <video id="video" preload="metadata" playsinline></video>
+        <p id="caption" hidden></p>
+      </div>
+    </div>
+    <div class="transport">
+      <button id="play" type="button">Play</button>
+      <span id="clock">0:00.0</span>
+      <span id="length"></span>
+    </div>
+    <div id="timeline"></div>
+    <div class="fields">
+      <label>Transition <select id="transition"></select></label>
+      <label>Length <input id="fade" type="number" min="0.05" max="2" step="0.05"></label>
+      <label>Voice <input id="gain" type="range" min="0" max="150" step="5"> <span id="gain-read">100%</span></label>
+      <label>Subtitles <input id="subtitles" type="checkbox"></label>
+    </div>
+    <div class="clipbar">
+      <strong id="clip-name"></strong>
+      <label>In <input id="in" class="time" spellcheck="false"></label>
+      <label>Out <input id="out" class="time" spellcheck="false"></label>
+      <button id="split" type="button">Split</button>
+      <button id="remove" type="button">Remove</button>
+    </div>
+    <p id="quote"></p>
+    <div id="lines"></div>
+    <p id="status" role="status"></p>
+    <p id="hint">Space play · arrows seek · [ ] trim the selected cut</p>
+  </main>
+  <script>
+    const MIN = 0.4;
+    const LINE = 18;
+    const video = document.querySelector("#video");
+    const title = document.querySelector("#title");
+    const meta = document.querySelector("#meta");
+    const modeButton = document.querySelector("#mode");
+    const saveButton = document.querySelector("#save");
+    const renderButton = document.querySelector("#render");
+    const playButton = document.querySelector("#play");
+    const clock = document.querySelector("#clock");
+    const lengthLabel = document.querySelector("#length");
+    const timeline = document.querySelector("#timeline");
+    const transitionEl = document.querySelector("#transition");
+    const fadeEl = document.querySelector("#fade");
+    const gainEl = document.querySelector("#gain");
+    const gainRead = document.querySelector("#gain-read");
+    const subtitlesEl = document.querySelector("#subtitles");
+    const clipName = document.querySelector("#clip-name");
+    const inEl = document.querySelector("#in");
+    const outEl = document.querySelector("#out");
+    const splitButton = document.querySelector("#split");
+    const removeButton = document.querySelector("#remove");
+    const quoteEl = document.querySelector("#quote");
+    const linesEl = document.querySelector("#lines");
+    const captionEl = document.querySelector("#caption");
+    const statusEl = document.querySelector("#status");
+
+    const state = {
+      brief: null,
+      words: [],
+      duration: 0,
+      clips: [],
+      selected: 0,
+      index: 0,
+      program: 0,
+      playing: false,
+      mode: "edit",
+      hold: false,
+      dragging: false,
+      dirty: false,
+      short: false,
+      sourceMissing: "",
+      pieces: [],
+      timelineKey: "",
+    };
+    const audio = { ready: false, failed: false, ctx: null, node: null };
+    let renderTimer = 0;
+
+    boot();
+
+    async function boot() {
+      statusEl.textContent = "Loading…";
+      const response = await fetch("/api/project");
+      if (!response.ok) {
+        statusEl.textContent = "Could not open this short.";
+        return;
+      }
+      const data = await response.json();
+      state.brief = data.brief;
+      state.words = data.words || [];
+      state.duration = data.duration || 0;
+      state.short = Boolean(data.short);
+      state.clips = (data.brief.moments || []).map(clipFromMoment);
+      state.pieces = data.pieces || [];
+      assignCues(data.cues || []);
+      title.textContent = data.title || "Short";
+      document.title = title.textContent;
+      meta.textContent = data.name || "";
+      const names = data.transitions || ["cut", "fade"];
+      transitionEl.innerHTML = names.map((name) => `<option value="${name}">${name}</option>`).join("");
+      const transition = data.brief.transition || {};
+      const type = typeof transition === "string" ? transition : (transition.type || "fade");
+      transitionEl.value = names.includes(type) ? type : "fade";
+      const stored = typeof transition === "object" && transition.duration ? Number(transition.duration) : 0.25;
+      fadeEl.value = stored > 0 ? stored : 0.25;
+      fadeEl.dataset.last = fadeEl.value;
+      fadeEl.disabled = transitionEl.value === "cut";
+      subtitlesEl.checked = data.subtitles !== false;
+      state.sourceMissing = data.source_missing || "";
+      if (state.sourceMissing) {
+        state.mode = "watch";
+        state.short = true;
+        modeButton.hidden = false;
+        modeButton.textContent = "Edit";
+        video.src = `/media/short?t=${Date.now()}`;
+        statusEl.textContent = `Session file ${state.sourceMissing} is missing. Playing the rendered short.`;
+      } else {
+        modeButton.hidden = !state.short;
+        video.src = "/media/source";
+        statusEl.textContent = "";
+      }
+      paintTimeline(true);
+      syncFields();
+      paintChrome();
+    }
+
+    function clipFromMoment(moment) {
+      const captions = Array.isArray(moment.captions)
+        ? moment.captions.map((line) => String(line).replace(/\n/g, " ").trim())
+        : null;
+      return {
+        id: moment.id,
+        start: parseTimecode(moment.start),
+        end: parseTimecode(moment.end),
+        gain: typeof moment.gain === "number" ? moment.gain : 1,
+        quote: moment.quote || "",
+        why: moment.why || "",
+        speaker: moment.speaker || "",
+        raw: moment,
+        custom: Array.isArray(moment.captions),
+        captions,
+        cues: [],
+      };
+    }
+
+    function assignCues(rows) {
+      const grouped = {};
+      for (const row of rows) (grouped[row.clip] ||= []).push(row);
+      for (const clip of state.clips) {
+        const next = grouped[clip.id] || [];
+        if (clip.custom && clip.captions && clip.captions.length === next.length) {
+          clip.cues = next.map((cue, index) => ({ ...cue, text: wrap(clip.captions[index]) }));
+        } else {
+          if (clip.custom && clip.captions && clip.captions.length !== next.length) {
+            clip.custom = false;
+            clip.captions = null;
+          }
+          clip.cues = next;
+        }
+      }
+    }
+
+    playButton.addEventListener("click", togglePlay);
+    modeButton.addEventListener("click", () => setMode(state.mode === "edit" ? "watch" : "edit"));
+    saveButton.addEventListener("click", save);
+    renderButton.addEventListener("click", renderShort);
+    splitButton.addEventListener("click", splitClip);
+    removeButton.addEventListener("click", removeClip);
+    transitionEl.addEventListener("change", () => {
+      fadeEl.disabled = transitionEl.value === "cut";
+      markDirty();
+      paintChrome();
+    });
+    fadeEl.addEventListener("input", () => {
+      if (transitionEl.value !== "cut") fadeEl.dataset.last = fadeEl.value;
+      markDirty();
+      paintChrome();
+    });
+    gainEl.addEventListener("input", () => {
+      const clip = selectedClip();
+      if (!clip) return;
+      clip.gain = Number(gainEl.value) / 100;
+      gainRead.textContent = `${gainEl.value}%`;
+      applyGain(clip.gain);
+      markDirty();
+    });
+    subtitlesEl.addEventListener("change", () => {
+      markDirty();
+      paintCaption();
+      paintLines();
+    });
+    inEl.addEventListener("change", () => commitEdge("start", inEl));
+    outEl.addEventListener("change", () => commitEdge("end", outEl));
+    for (const field of [inEl, outEl]) {
+      field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") field.blur();
+      });
+    }
+    timeline.addEventListener("pointerdown", onTimeline);
+    video.addEventListener("seeked", () => { state.hold = false; });
+    video.addEventListener("loadedmetadata", () => {
+      if (state.mode === "edit" && Number.isFinite(video.duration) && video.duration > state.duration) {
+        state.duration = video.duration;
+      }
+    });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("beforeunload", (event) => {
+      if (!state.dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    setInterval(tick, 50);
+
+    function tick() {
+      if (state.mode === "watch") {
+        playButton.textContent = video.paused ? "Play" : "Pause";
+        if (video.duration) {
+          state.program = video.currentTime;
+          const span = state.pieces.length ? assemblySpan() : video.duration;
+          paintPlayhead(span);
+          paintClock(video.currentTime, video.duration);
+          paintPieces();
+        }
+        return;
+      }
+      playButton.textContent = state.playing ? "Pause" : "Play";
+      if (!state.playing || state.hold || state.dragging || video.seeking) {
+        paintCaption();
+        return;
+      }
+      const clip = state.clips[state.index];
+      if (!clip) return;
+      if (video.currentTime < clip.start - 0.25) return;
+      if (video.currentTime >= clip.end - 0.03) {
+        advance();
+        return;
+      }
+      state.program = programStart(state.index) + Math.max(0, video.currentTime - clip.start);
+      paintPlayhead(total());
+      paintClock(state.program, total());
+      paintCaption();
+    }
+
+    function advance() {
+      if (state.index + 1 >= state.clips.length) {
+        state.playing = false;
+        video.pause();
+        state.program = total();
+        paintChrome();
+        return;
+      }
+      state.index += 1;
+      const clip = state.clips[state.index];
+      state.hold = true;
+      video.currentTime = clip.start;
+      state.program = programStart(state.index);
+      applyGain(clip.gain);
+      follow(state.index);
+    }
+
+    function togglePlay() {
+      if (state.mode === "watch") {
+        if (video.paused) video.play();
+        else video.pause();
+        return;
+      }
+      if (state.playing) {
+        state.playing = false;
+        video.pause();
+        playButton.textContent = "Play";
+        return;
+      }
+      if (state.program >= total() - 0.05) state.program = 0;
+      const place = locate(state.program);
+      state.index = place.index;
+      state.playing = true;
+      state.hold = Math.abs(video.currentTime - place.source) >= 0.08;
+      if (state.hold) video.currentTime = place.source;
+      ensureAudio();
+      applyGain(state.clips[place.index].gain);
+      follow(place.index);
+      video.play();
+      playButton.textContent = "Pause";
+    }
+
+    function setMode(next) {
+      if (next === "edit" && state.sourceMissing) {
+        statusEl.textContent = `Put ${state.sourceMissing} back to trim the session.`;
+        return;
+      }
+      state.mode = next;
+      state.playing = false;
+      video.pause();
+      if (next === "watch") {
+        applyGain(1);
+        video.src = `/media/short?t=${Date.now()}`;
+        modeButton.textContent = "Edit";
+        captionEl.hidden = true;
+      } else {
+        video.src = "/media/source";
+        modeButton.textContent = "Watch";
+        applyGain(selectedClip() ? selectedClip().gain : 1);
+        const place = locate(state.program);
+        video.addEventListener("loadedmetadata", () => { video.currentTime = place.source; }, { once: true });
+      }
+      state.timelineKey = "";
+      paintTimeline(true);
+      paintChrome();
+      if (next === "edit") syncFields();
+    }
+
+    function onTimeline(event) {
+      if (event.target.closest(".handle")) return;
+      const ratio = ratioOf(event);
+      if (state.mode === "watch") {
+        const span = state.pieces.length ? assemblySpan() : (video.duration || 0);
+        if (span) video.currentTime = ratio * Math.min(span, video.duration || span);
+        return;
+      }
+      const block = event.target.closest(".clip");
+      if (block) state.selected = Number(block.dataset.index);
+      seekProgram(ratio * total());
+    }
+
+    function startTrim(event, index, edge) {
+      event.preventDefault();
+      event.stopPropagation();
+      const clip = state.clips[index];
+      state.selected = index;
+      state.dragging = true;
+      state.playing = false;
+      video.pause();
+      const originStart = clip.start;
+      const originEnd = clip.end;
+      const frozen = total();
+      const origin = programStart(index);
+      const rect = timeline.getBoundingClientRect();
+      function move(moveEvent) {
+        const at = ((moveEvent.clientX - rect.left) / rect.width) * frozen;
+        if (edge === "in") clip.start = clamp(originStart + (at - origin), 0, originEnd - MIN);
+        else clip.end = clamp(originStart + (at - origin), originStart + MIN, state.duration);
+        const edgeProgram = edge === "in"
+          ? origin + (clip.start - originStart)
+          : origin + (clip.end - clip.start);
+        state.program = edgeProgram;
+        video.currentTime = edge === "in" ? clip.start : Math.max(clip.start, clip.end - 0.05);
+        layout(frozen);
+        paintPlayhead(frozen);
+        paintClock(state.program, total());
+      }
+      function up() {
+        state.dragging = false;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        if (clip.start !== originStart || clip.end !== originEnd) {
+          rewriteQuote(clip);
+          refreshCues();
+          markDirty();
+        }
+        syncFields();
+        paintChrome();
+      }
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    }
+
+    function commitEdge(key, field) {
+      const clip = selectedClip();
+      if (!clip) return;
+      const value = parseTimecode(field.value);
+      if (value == null) {
+        syncFields();
+        return;
+      }
+      if (key === "start") clip.start = clamp(value, 0, clip.end - MIN);
+      else clip.end = clamp(value, clip.start + MIN, state.duration);
+      rewriteQuote(clip);
+      layout();
+      refreshCues();
+      syncFields();
+      markDirty();
+      paintChrome();
+    }
+
+    function splitClip() {
+      const clip = selectedClip();
+      if (!clip) return;
+      const at = sourceAt(state.program);
+      if (locate(state.program).index !== state.selected || at < clip.start + MIN || at > clip.end - MIN) {
+        statusEl.textContent = "Park the playhead inside the cut, with room on both sides.";
+        return;
+      }
+      const right = clipFromMoment({
+        id: nextId(clip.id),
+        start: at,
+        end: clip.end,
+        speaker: clip.speaker,
+        quote: quoteBetween(at, clip.end) || clip.quote,
+        why: `Split from ${clip.id}.`,
+      });
+      clip.end = at;
+      rewriteQuote(clip);
+      clip.custom = false;
+      clip.captions = null;
+      state.clips.splice(state.selected + 1, 0, right);
+      state.selected += 1;
+      state.timelineKey = "";
+      refreshCues();
+      syncFields();
+      markDirty();
+      paintChrome();
+      statusEl.textContent = "";
+    }
+
+    function removeClip() {
+      if (state.clips.length < 2) return;
+      state.clips.splice(state.selected, 1);
+      state.selected = Math.min(state.selected, state.clips.length - 1);
+      state.program = programStart(state.selected);
+      state.timelineKey = "";
+      seekProgram(state.program);
+      refreshCues();
+      markDirty();
+    }
+
+    async function refreshCues() {
+      const response = await fetch("/api/cues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moments: state.clips.map((clip) => ({ id: clip.id, start: clip.start, end: clip.end })),
+        }),
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      assignCues(data.cues || []);
+      paintLines();
+      paintCaption();
+    }
+
+    async function save() {
+      const brief = serialize();
+      saveButton.disabled = true;
+      const response = await fetch("/api/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(brief),
+      });
+      const data = await response.json();
+      saveButton.disabled = false;
+      if (!response.ok || !data.ok) {
+        statusEl.textContent = (data.errors || [data.error || "Could not save."]).join(" ");
+        return false;
+      }
+      state.brief = brief;
+      state.dirty = false;
+      saveButton.classList.remove("solid");
+      statusEl.textContent = data.warnings && data.warnings.length ? `Saved. ${data.warnings[0]}` : "Saved.";
+      return true;
+    }
+
+    async function renderShort() {
+      if (state.dirty) {
+        const ok = await save();
+        if (!ok) return;
+      }
+      renderButton.disabled = true;
+      statusEl.textContent = "Rendering. This takes a few minutes.";
+      const response = await fetch("/api/render", { method: "POST" });
+      const data = await response.json();
+      if (data.status === "error") {
+        renderButton.disabled = false;
+        statusEl.textContent = data.error || "Render failed.";
+        return;
+      }
+      clearInterval(renderTimer);
+      renderTimer = setInterval(pollRender, 1000);
+    }
+
+    async function pollRender() {
+      const response = await fetch("/api/render");
+      const data = await response.json();
+      if (data.status === "running") return;
+      clearInterval(renderTimer);
+      renderButton.disabled = false;
+      if (data.status === "error") {
+        statusEl.textContent = data.error || "Render failed.";
+        return;
+      }
+      state.short = true;
+      modeButton.hidden = false;
+      statusEl.textContent = "Rendered.";
+    }
+
+    function serialize() {
+      const brief = structuredClone(state.brief);
+      const type = transitionEl.value;
+      const kept = Number(fadeEl.dataset.last || fadeEl.value || 0.25);
+      brief.transition = { type, duration: type === "cut" ? kept : Number(fadeEl.value) };
+      if (subtitlesEl.checked) delete brief.subtitles;
+      else brief.subtitles = false;
+      brief.moments = state.clips.map((clip) => {
+        const moment = structuredClone(clip.raw);
+        moment.id = clip.id;
+        moment.start = formatTimecode(clip.start);
+        moment.end = formatTimecode(clip.end);
+        moment.quote = clip.quote;
+        moment.why = clip.why;
+        if (clip.speaker) moment.speaker = clip.speaker;
+        if (Math.abs(clip.gain - 1) > 0.001) moment.gain = Math.round(clip.gain * 1000) / 1000;
+        else delete moment.gain;
+        if (clip.custom && clip.captions) moment.captions = clip.captions.slice();
+        else delete moment.captions;
+        return moment;
+      });
+      return brief;
+    }
+
+    function seekProgram(time) {
+      state.program = clamp(time, 0, total());
+      const place = locate(state.program);
+      state.index = place.index;
+      state.hold = Math.abs(video.currentTime - place.source) >= 0.05;
+      if (state.hold) video.currentTime = place.source;
+      applyGain(state.clips[place.index].gain);
+      follow(place.index);
+      paintChrome();
+    }
+
+    function follow(index) {
+      if (index === state.selected) {
+        paintTimeline(false);
+        return;
+      }
+      if (fieldFocused()) {
+        paintTimeline(false);
+        return;
+      }
+      state.selected = index;
+      syncFields();
+      paintTimeline(false);
+    }
+
+    function syncFields() {
+      const clip = selectedClip();
+      if (!clip) return;
+      clipName.textContent = clip.id;
+      inEl.value = formatTimecode(clip.start);
+      outEl.value = formatTimecode(clip.end);
+      const percent = Math.round(clip.gain * 100);
+      gainEl.value = String(percent);
+      gainRead.textContent = `${percent}%`;
+      quoteEl.textContent = clip.quote;
+      quoteEl.title = clip.why || "";
+      const watching = state.mode === "watch";
+      inEl.disabled = watching;
+      outEl.disabled = watching;
+      removeButton.disabled = state.clips.length < 2 || watching;
+      splitButton.disabled = watching;
+      paintLines();
+      paintTimeline(false);
+    }
+
+    function paintLines() {
+      linesEl.replaceChildren();
+      if (!subtitlesEl.checked || state.mode === "watch") return;
+      const clip = selectedClip();
+      if (!clip) return;
+      clip.cues.forEach((cue, index) => {
+        const input = document.createElement("input");
+        input.value = cue.text.replace(/\n/g, " ");
+        input.spellcheck = false;
+        input.setAttribute("aria-label", `Subtitle ${index + 1}`);
+        input.addEventListener("input", () => {
+          clip.custom = true;
+          clip.captions = clip.cues.map((item, itemIndex) => (
+            itemIndex === index ? input.value : item.text.replace(/\n/g, " ")
+          ));
+          cue.text = wrap(input.value);
+          paintCaption();
+          markDirty();
+        });
+        linesEl.append(input);
+      });
+    }
+
+    function paintTimeline(rebuild) {
+      if (state.mode === "watch") {
+        const key = `watch:${state.pieces.map((piece) => `${piece.id}@${piece.start}`).join("|")}`;
+        if (state.timelineKey !== key) {
+          state.timelineKey = key;
+          timeline.replaceChildren();
+          const pieces = state.pieces.length ? state.pieces : [{ id: "short", start: 0, end: 1, kind: "moment" }];
+          pieces.forEach((piece) => {
+            const block = document.createElement("div");
+            block.className = piece.kind && piece.kind !== "moment" ? "clip card" : "clip";
+            block.title = pieceNote(piece);
+            const name = document.createElement("span");
+            name.className = "name";
+            name.textContent = piece.id;
+            block.append(name);
+            timeline.append(block);
+            piece.block = block;
+          });
+          timeline.append(playhead());
+        }
+        paintPieces();
+        paintPlayhead(state.pieces.length ? assemblySpan() : (video.duration || 1));
+        return;
+      }
+      const key = state.clips.map((clip) => clip.id).join("|");
+      if (rebuild || key !== state.timelineKey) {
+        state.timelineKey = key;
+        timeline.replaceChildren();
+        state.clips.forEach((clip, index) => {
+          const block = document.createElement("div");
+          block.className = "clip";
+          block.dataset.index = String(index);
+          block.title = clip.why || "";
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = clip.id;
+          const left = handle(index, "in", `Trim in of ${clip.id}`);
+          const right = handle(index, "out", `Trim out of ${clip.id}`);
+          block.append(left, name, right);
+          timeline.append(block);
+          clip.block = block;
+        });
+        timeline.append(playhead());
+      }
+      layout();
+      paintPlayhead(total());
+    }
+
+    function handle(index, edge, label) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `handle ${edge === "in" ? "left" : "right"}`;
+      button.setAttribute("aria-label", label);
+      button.addEventListener("pointerdown", (event) => startTrim(event, index, edge));
+      return button;
+    }
+
+    function playhead() {
+      const head = document.createElement("div");
+      head.id = "playhead";
+      return head;
+    }
+
+    function layout(span) {
+      const scale = Math.max(span || total(), 0.001);
+      let cursor = 0;
+      state.clips.forEach((clip) => {
+        const width = ((clip.end - clip.start) / scale) * 100;
+        if (clip.block) {
+          clip.block.style.left = `${(cursor / scale) * 100}%`;
+          clip.block.style.width = `${width}%`;
+          clip.block.classList.toggle("selected", state.clips[state.selected] === clip);
+        }
+        cursor += clip.end - clip.start;
+      });
+    }
+
+    function paintPieces() {
+      const span = assemblySpan();
+      const current = pieceAt(video.currentTime || 0);
+      state.pieces.forEach((piece) => {
+        if (!piece.block) return;
+        piece.block.style.left = `${(piece.start / span) * 100}%`;
+        piece.block.style.width = `${((piece.end - piece.start) / span) * 100}%`;
+        piece.block.classList.toggle("selected", piece === current);
+      });
+      if (!current) return;
+      clipName.textContent = current.id;
+      inEl.value = formatTimecode(current.start);
+      outEl.value = formatTimecode(current.end);
+      inEl.disabled = true;
+      outEl.disabled = true;
+      quoteEl.textContent = pieceNote(current);
+    }
+
+    function pieceAt(time) {
+      return state.pieces.find((piece, index) => (
+        time >= piece.start && (time < piece.end || index === state.pieces.length - 1)
+      )) || null;
+    }
+
+    function pieceNote(piece) {
+      if (!piece || piece.kind === "moment") {
+        const clip = state.clips.find((item) => item.id === (piece && piece.id));
+        return clip ? clip.quote : "";
+      }
+      if (piece.kind === "opening") return "Opening";
+      if (piece.kind === "watch") return "Watch card";
+      if (piece.kind === "ending") return "Ending";
+      return "";
+    }
+
+    function assemblySpan() {
+      const last = state.pieces[state.pieces.length - 1];
+      const planned = last ? last.end : 0;
+      const actual = Number.isFinite(video.duration) ? video.duration : 0;
+      return Math.max(planned, actual, 0.001);
+    }
+
+    function paintPlayhead(span) {
+      const head = document.querySelector("#playhead");
+      if (!head || !span) return;
+      head.style.left = `${(state.program / span) * 100}%`;
+    }
+
+    function paintClock(now, span) {
+      clock.textContent = `${formatClock(now)} / ${formatClock(span)}`;
+    }
+
+    function paintChrome() {
+      const span = state.mode === "watch"
+        ? (state.pieces.length ? assemblySpan() : (video.duration || 0))
+        : total();
+      const now = state.mode === "watch" ? video.currentTime : state.program;
+      paintClock(now, span);
+      paintPlayhead(span || 1);
+      paintCaption();
+      const rendered = renderedLength();
+      lengthLabel.textContent = state.mode === "edit" && transitionEl.value !== "cut" && state.clips.length > 1
+        ? `renders ${formatClock(rendered)}`
+        : "";
+    }
+
+    function paintCaption() {
+      if (!subtitlesEl.checked || state.mode !== "edit") {
+        captionEl.hidden = true;
+        return;
+      }
+      const cue = state.clips.flatMap((clip) => clip.cues).find((item) => state.program >= item.start && state.program < item.end);
+      if (!cue || !cue.text.trim()) {
+        captionEl.hidden = true;
+        return;
+      }
+      captionEl.hidden = false;
+      captionEl.textContent = cue.text;
+    }
+
+    function selectedClip() {
+      return state.clips[state.selected] || null;
+    }
+
+    function total() {
+      return state.clips.reduce((sum, clip) => sum + Math.max(0, clip.end - clip.start), 0);
+    }
+
+    function renderedLength() {
+      const hard = total();
+      if (transitionEl.value === "cut" || state.clips.length < 2) return hard;
+      return Math.max(0, hard - Number(fadeEl.value || 0) * (state.clips.length - 1));
+    }
+
+    function programStart(index) {
+      let cursor = 0;
+      for (let i = 0; i < index; i += 1) cursor += state.clips[i].end - state.clips[i].start;
+      return cursor;
+    }
+
+    function locate(time) {
+      let cursor = 0;
+      for (let index = 0; index < state.clips.length; index += 1) {
+        const clip = state.clips[index];
+        const span = clip.end - clip.start;
+        if (time <= cursor + span || index === state.clips.length - 1) {
+          const local = clamp(time - cursor, 0, span);
+          return { index, source: clip.start + local, local };
+        }
+        cursor += span;
+      }
+      const clip = state.clips[0];
+      return { index: 0, source: clip ? clip.start : 0, local: 0 };
+    }
+
+    function sourceAt(time) {
+      return locate(time).source;
+    }
+
+    function rewriteQuote(clip) {
+      const spoken = quoteBetween(clip.start, clip.end);
+      if (!spoken) return;
+      clip.quote = spoken;
+      clip.raw = { ...clip.raw, quote: spoken };
+    }
+
+    function quoteBetween(start, end) {
+      return state.words
+        .filter((word) => word.start >= start - 0.05 && word.end <= end + 0.05)
+        .map((word) => word.text)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function nextId(base) {
+      const taken = new Set(state.clips.map((clip) => clip.id));
+      for (let n = 2; n < 50; n += 1) {
+        const id = `${base}-${n}`.slice(0, 41).replace(/[^a-z0-9-]/g, "");
+        if (/^[a-z0-9]/.test(id) && !taken.has(id)) return id;
+      }
+      return `${base}-b`;
+    }
+
+    function ensureAudio() {
+      if (audio.ready || audio.failed) return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) {
+        audio.failed = true;
+        return;
+      }
+      try {
+        const ctx = new Ctx();
+        const node = ctx.createGain();
+        ctx.createMediaElementSource(video).connect(node).connect(ctx.destination);
+        audio.ctx = ctx;
+        audio.node = node;
+        audio.ready = true;
+      } catch (error) {
+        audio.failed = true;
+      }
+    }
+
+    function applyGain(value) {
+      if (state.mode === "watch") value = 1;
+      if (audio.node) audio.node.gain.value = value;
+      else video.volume = Math.max(0, Math.min(1, value));
+      if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
+    }
+
+    function markDirty() {
+      state.dirty = true;
+      saveButton.classList.add("solid");
+    }
+
+    function onKey(event) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (fieldFocused() || event.target.tagName === "BUTTON") return;
+      if (event.key === " ") {
+        event.preventDefault();
+        togglePlay();
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const step = event.shiftKey ? 0.1 : 0.5;
+        const sign = event.key === "ArrowLeft" ? -1 : 1;
+        if (state.mode === "watch") video.currentTime = Math.max(0, video.currentTime + sign * step);
+        else seekProgram(state.program + sign * step);
+      } else if ((event.key === "[" || event.key === "]") && state.mode === "edit") {
+        event.preventDefault();
+        trimToPlayhead(event.key === "[" ? "start" : "end");
+      }
+    }
+
+    function trimToPlayhead(edge) {
+      const clip = selectedClip();
+      if (!clip || locate(state.program).index !== state.selected) return;
+      const at = sourceAt(state.program);
+      if (edge === "start" && at < clip.end - MIN) clip.start = Math.max(0, at);
+      if (edge === "end" && at > clip.start + MIN) clip.end = Math.min(state.duration, at);
+      rewriteQuote(clip);
+      layout();
+      refreshCues();
+      syncFields();
+      markDirty();
+      paintChrome();
+    }
+
+    function fieldFocused() {
+      const tag = document.activeElement && document.activeElement.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    }
+
+    function ratioOf(event) {
+      const rect = timeline.getBoundingClientRect();
+      return clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    }
+
+    function wrap(text) {
+      const words = String(text || "").replace(/\n/g, " ").split(/\s+/).filter(Boolean);
+      const lines = [];
+      let current = "";
+      for (const word of words) {
+        const trial = current ? `${current} ${word}` : word;
+        if (current && trial.length > LINE) {
+          lines.push(current);
+          current = word;
+        } else {
+          current = trial;
+        }
+      }
+      if (current) lines.push(current);
+      return lines.join("\n");
+    }
+
+    function parseTimecode(value) {
+      const text = String(value).trim().replace(",", ".");
+      if (!text) return null;
+      const parts = text.split(":");
+      if (parts.length > 3) return null;
+      const numbers = parts.map(Number);
+      if (numbers.some((number) => Number.isNaN(number) || number < 0)) return null;
+      return numbers.reduce((total, number) => total * 60 + number, 0);
+    }
+
+    function formatTimecode(seconds) {
+      const total = Math.max(0, Math.round(seconds * 1000));
+      const hours = Math.floor(total / 3600000);
+      const minutes = Math.floor((total % 3600000) / 60000);
+      const secs = Math.floor((total % 60000) / 1000);
+      const millis = total % 1000;
+      return `${pad(hours)}:${pad(minutes)}:${pad(secs)}.${String(millis).padStart(3, "0")}`;
+    }
+
+    function formatClock(seconds) {
+      const total = Math.max(0, Number(seconds) || 0);
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const secs = (total - hours * 3600 - minutes * 60).toFixed(1).padStart(4, "0");
+      if (hours) return `${hours}:${pad(minutes)}:${secs}`;
+      return `${minutes}:${secs}`;
+    }
+
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+  </script>
+</body>
+</html>

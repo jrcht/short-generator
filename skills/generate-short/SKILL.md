@@ -35,4 +35,4 @@ Follow [cut-short](../cut-short/SKILL.md).
 
 ## Reply
 
-Return the short path, the title, each moment with its timecode and why, and the transition. Do not paste the transcript.
+Return the short path, the title, each moment with its timecode and why, and the transition. The delivered file is 1080×1920, with the opening, the logo frame, large captions on the moments, the watch card, and the ending from `assets/`. Do not paste the transcript.

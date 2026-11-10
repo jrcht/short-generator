@@ -38,6 +38,8 @@ def check_brief(data: object, *, duration: float | None = None, words: list[dict
     _check_optional_text(data, "audience", report)
     _check_avoid(data.get("avoid"), report)
     transition, fade = _check_transition(data.get("transition"), report)
+    if "subtitles" in data and not isinstance(data.get("subtitles"), bool):
+        report.errors.append("subtitles must be true or false.")
     moments = data.get("moments")
     if not isinstance(moments, list) or not moments:
         report.errors.append("moments must be a non-empty list.")
@@ -80,6 +82,8 @@ def check_brief(data: object, *, duration: float | None = None, words: list[dict
             report.errors.append(f"{label}.why must say what this moment does in the short.")
         if not str(moment.get("speaker") or "").strip():
             report.warnings.append(f"{moment_id or label} has no speaker.")
+        _check_gain(moment, label, report)
+        _check_captions(moment, label, report)
         parsed.append((start, end, moment_id or label))
 
     if len(moments) > 6:
@@ -138,6 +142,8 @@ def render_brief(data: dict) -> str:
     if name != "cut" and len(ranges) > 1:
         planned -= fade * (len(ranges) - 1)
     transition_line = "cut" if name == "cut" else f"{name} {fade:.2f}s"
+    if data.get("subtitles") is False:
+        transition_line += " · subtitles off"
     target = data.get("target_seconds")
     target_line = f"{target}s" if target else "unset"
     lines = [
@@ -162,9 +168,13 @@ def render_brief(data: dict) -> str:
         start = parse_timecode(moment["start"])
         end = parse_timecode(moment["end"])
         speaker = str(moment.get("speaker") or "speaker")
+        voice = ""
+        gain = moment.get("gain")
+        if isinstance(gain, (int, float)) and not isinstance(gain, bool) and abs(float(gain) - 1) > 0.001:
+            voice = f" · voice {float(gain):.0%}"
         lines.extend(
             [
-                f"## {index}. {moment.get('id')} · {format_timecode(start)}–{format_timecode(end)} · {speaker}",
+                f"## {index}. {moment.get('id')} · {format_timecode(start)}–{format_timecode(end)} · {speaker}{voice}",
                 "",
                 f"> {str(moment.get('quote') or '').strip()}",
                 "",
@@ -187,6 +197,30 @@ def load_brief(path: Path) -> dict:
 
 def moment_bounds(moment: dict) -> tuple[float, float]:
     return round_s(parse_timecode(moment["start"])), round_s(parse_timecode(moment["end"]))
+
+
+def _check_gain(moment: dict, label: str, report: BriefReport) -> None:
+    if "gain" not in moment or moment.get("gain") is None:
+        return
+    raw = moment.get("gain")
+    if isinstance(raw, bool):
+        report.errors.append(f"{label}.gain must be a number from 0 to 2.")
+        return
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        report.errors.append(f"{label}.gain must be a number from 0 to 2.")
+        return
+    if value < 0 or value > 2:
+        report.errors.append(f"{label}.gain must be a number from 0 to 2.")
+
+
+def _check_captions(moment: dict, label: str, report: BriefReport) -> None:
+    captions = moment.get("captions")
+    if captions is None:
+        return
+    if not isinstance(captions, list) or any(not isinstance(line, str) for line in captions):
+        report.errors.append(f"{label}.captions must be a list of lines.")
 
 
 def _check_optional_text(data: dict, key: str, report: BriefReport) -> None:

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from shortgen.brief import check_brief, quote_mismatch
 from shortgen.cut import build_filter, build_plan, snap_range, transition_offsets
+from shortgen.captions import cues_for_clips
+from shortgen.package import clear_window, cover_crop, follow_crop, opening_cut, watch_cut
 from shortgen.paths import allocate_slug, find_root, slug_text, slugify
 from shortgen.segments import group_segments, render_markdown
 from shortgen.timeutil import format_srt_time, format_timecode, parse_timecode
@@ -121,6 +123,93 @@ class PlanTests(unittest.TestCase):
     def test_bad_brief_is_refused_before_ffmpeg(self):
         with self.assertRaises(SystemExit):
             build_plan({"title": "", "moments": []})
+
+
+class PackageTests(unittest.TestCase):
+    def test_opening_keeps_the_card_and_drops_the_green_hold(self):
+        samples = []
+        for index in range(30):
+            time = index / 10
+            if time < 1.0:
+                samples.append((time, 0.0, 0.0 if index == 0 else 0.01))
+            elif time < 1.3:
+                samples.append((time, (time - 1.0) / 0.3, 0.2))
+            else:
+                samples.append((time, 1.0, 0.2 if time < 1.4 else 0.0))
+        preroll, keyed_end = opening_cut(samples, 3.0)
+        self.assertAlmostEqual(preroll, 0.9, delta=0.15)
+        self.assertGreater(keyed_end, preroll)
+        self.assertLess(keyed_end, 1.6)
+
+    def test_watch_drops_the_green_head_and_keeps_the_card(self):
+        samples = []
+        for index in range(40):
+            time = index / 10
+            if time < 1.0:
+                samples.append((time, 1.0, 0.0))
+            elif time < 1.4:
+                samples.append((time, max(0.0, 1.0 - (time - 1.0) / 0.4), 0.25))
+            else:
+                samples.append((time, 0.0, 0.2 if time < 1.8 else 0.01))
+        overlap, post = watch_cut(samples, 4.0)
+        self.assertAlmostEqual(overlap, 0.9, delta=0.15)
+        self.assertGreater(post, 1.3)
+        self.assertLess(post, 2.4)
+
+    def test_cover_crop_cuts_the_wide_side(self):
+        width, height = cover_crop(1920, 1080, 1080, 1548)
+        self.assertLess(width, 1920)
+        self.assertEqual(height, 1080)
+        self.assertEqual(width % 2, 0)
+
+    def test_follow_crop_stays_with_the_speaker(self):
+        centers = [(0.0, 400.0), (2.0, 1400.0)]
+        xs = follow_crop(centers, 2.0, 1920, 754, fps=10)
+        self.assertEqual(len(xs), 20)
+        self.assertLess(xs[1], 500)
+        self.assertGreater(xs[-1], 800)
+        self.assertTrue(all(0 <= x <= 1920 - 754 for x in xs))
+        self.assertTrue(all(x % 2 == 0 for x in xs))
+
+    def test_captions_follow_each_cut_and_drop_fillers(self):
+        clips = [
+            {"start": 10.0, "end": 14.0},
+            {"start": 20.0, "end": 23.0},
+        ]
+        words = [
+            word("whenever", 10.1, 10.4),
+            word("uh", 10.5, 10.7),
+            word("we", 10.8, 11.0),
+            word("use", 11.05, 11.3),
+            word("them.", 11.4, 11.8),
+            word("So", 12.0, 12.2),
+            word("what,", 12.3, 12.5),
+            word("what", 12.55, 12.8),
+            word("should", 12.9, 13.1),
+            word("we", 13.15, 13.3),
+            word("do?", 13.4, 13.7),
+            word("ac-actually", 20.2, 20.6),
+            word("install", 20.7, 21.1),
+            word("locally.", 21.2, 21.7),
+        ]
+        cues = cues_for_clips(clips, words, fade=0.0)
+        texts = [cue.text.replace("\n", " ") for cue in cues]
+        self.assertIn("whenever we use them.", texts)
+        self.assertNotIn("uh", " ".join(texts).split())
+        self.assertIn("So what should we do?", texts)
+        later = [cue for cue in cues if cue.text.replace("\n", " ").startswith("actually")]
+        self.assertEqual(len(later), 1)
+        self.assertAlmostEqual(later[0].start, 4.2, delta=0.15)
+        self.assertTrue(all(cue.end > cue.start for cue in cues))
+        self.assertLess(max(cue.end for cue in cues if cue.start < 4), 4.05)
+
+    def test_clear_window_finds_the_transparent_band(self):
+        width, height = 8, 10
+        alpha = bytearray([255]) * (width * height)
+        for y in range(2, 8):
+            for x in range(width):
+                alpha[y * width + x] = 0
+        self.assertEqual(clear_window(bytes(alpha), width, height), (0, 2, 8, 6))
 
 
 class PathTests(unittest.TestCase):

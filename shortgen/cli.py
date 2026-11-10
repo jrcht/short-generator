@@ -13,6 +13,7 @@ from shortgen.cut import cut_video, default_brief_path
 from shortgen.paths import display_path, find_root, resolve_existing, resolve_source, video_paths
 from shortgen.segments import load_words
 from shortgen.transcribe import render_transcript, transcribe
+from shortgen.view import run_viewer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,7 +63,19 @@ def main(argv: list[str] | None = None) -> int:
     cut_cmd.add_argument("--preset", default="medium", help="libx264 preset.")
     cut_cmd.add_argument("--crf", type=int, default=18)
     cut_cmd.add_argument("--dry-run", action="store_true", help="Print the cut plan without writing a video.")
+    cut_cmd.add_argument(
+        "--no-package",
+        action="store_true",
+        help="Keep the session frame. Skip the opening, logo, watch card, and ending.",
+    )
     cut_cmd.set_defaults(func=_cmd_cut)
+
+    view_cmd = commands.add_parser("view", help="Open a player to trim, set the transition, voice, and subtitles.")
+    view_cmd.add_argument("video")
+    view_cmd.add_argument("--name", default="main", help="Short name. Default: main.")
+    view_cmd.add_argument("--port", type=int, default=8733, help="Port for the local player. Default: 8733.")
+    view_cmd.add_argument("--no-open", action="store_true", help="Do not open a browser.")
+    view_cmd.set_defaults(func=_cmd_view)
 
     args = parser.parse_args(argv)
     try:
@@ -142,6 +155,11 @@ def _cmd_brief_render(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_view(args: argparse.Namespace) -> int:
+    run_viewer(args.video, name=args.name, port=args.port, open_browser=not args.no_open)
+    return 0
+
+
 def _cmd_cut(args: argparse.Namespace) -> int:
     source = resolve_source(args.video)
     brief_path = Path(args.brief) if args.brief else default_brief_path(source, args.name)
@@ -168,6 +186,7 @@ def _cmd_cut(args: argparse.Namespace) -> int:
         preset=args.preset,
         crf=args.crf,
         dry_run=args.dry_run,
+        package=not args.no_package,
     )
     if args.dry_run:
         print(json.dumps(plan, indent=2))

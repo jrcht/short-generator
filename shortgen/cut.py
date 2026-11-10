@@ -11,6 +11,8 @@ from pathlib import Path
 
 from shortgen.brief import check_brief, load_brief, moment_bounds, transition_of
 from shortgen.media import probe, require_ffmpeg, run
+from shortgen.captions import cues_for_clips
+from shortgen.package import find_package_assets, package_video
 from shortgen.paths import display_path, video_paths
 from shortgen.segments import load_words
 from shortgen.timeutil import round_s
@@ -32,13 +34,14 @@ class PlannedClip:
     speaker: str | None
     quote: str
     why: str
+    gain: float = 1.0
 
     @property
     def duration(self) -> float:
         return self.end - self.start
 
     def as_dict(self) -> dict:
-        return {
+        data = {
             "id": self.id,
             "requested_start": self.requested_start,
             "requested_end": self.requested_end,
@@ -48,6 +51,9 @@ class PlannedClip:
             "quote": self.quote,
             "why": self.why,
         }
+        if abs(self.gain - 1.0) >= 0.001:
+            data["gain"] = round_s(self.gain)
+        return data
 
 
 def build_plan(
@@ -74,6 +80,7 @@ def build_plan(
                 speaker=moment.get("speaker"),
                 quote=str(moment.get("quote") or ""),
                 why=str(moment.get("why") or ""),
+                gain=_moment_gain(moment),
             )
         )
     return clips, list(report.warnings)
@@ -149,6 +156,7 @@ def cut_video(
     preset: str = "medium",
     crf: int = 18,
     dry_run: bool = False,
+    package: bool = False,
 ) -> dict:
     brief = load_brief(brief_path)
     if transition or transition_duration is not None:
@@ -165,6 +173,11 @@ def cut_video(
         "clips": [clip.as_dict() for clip in clips],
         "output": display_path(output),
     }
+    assets = find_package_assets() if package else None
+    if package and assets is None:
+        _log("Packaging assets are not all in assets/. Writing the session frame only.")
+    elif assets is not None:
+        plan["package"] = {"width": 1080, "height": 1920}
     for warning in warnings:
         _log(f"warning: {warning}")
     if dry_run:
@@ -175,8 +188,26 @@ def cut_video(
     try:
         _render(source, clips, rendering, transition=name, fade=fade, info=info, preset=preset, crf=crf, work=work)
         output.parent.mkdir(parents=True, exist_ok=True)
-        rendering.replace(output)
-        finished = probe(output)
+        if assets is None:
+            rendering.replace(output)
+            finished = probe(output)
+        else:
+            body = output.with_name("body.mp4")
+            rendering.replace(body)
+            plan["body"] = display_path(body)
+            if brief.get("subtitles") is False:
+                cues = []
+            else:
+                cues = cues_for_clips(
+                    [clip.as_dict() for clip in clips],
+                    words or [],
+                    fade if name != "cut" else 0.0,
+                    _caption_texts(brief),
+                )
+                if words and not cues:
+                    _log("No spoken words landed inside the moments, so the short has no captions.")
+            plan["package"] = package_video(body, output, assets, preset=preset, crf=crf, cues=cues)
+            finished = probe(output)
         plan["output_duration"] = round_s(finished["duration"])
         plan["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         edit_path = output.parent / "edit.json"
@@ -211,7 +242,15 @@ def _render(
     try:
         for index, clip in enumerate(clips):
             clip_path = work / f"clip-{index:02d}.mp4"
-            _extract_clip(source, clip, clip_path, has_audio=info["has_audio"], fps=info["fps"], preset=preset, crf=crf)
+            _extract_clip(
+                source,
+                clip,
+                clip_path,
+                has_audio=info["has_audio"],
+                fps=info["fps"],
+                preset=preset,
+                crf=crf,
+            )
             clip_paths.append(clip_path)
         output.parent.mkdir(parents=True, exist_ok=True)
         if len(clip_paths) == 1:
@@ -272,7 +311,7 @@ def _extract_clip(
         cmd += ["-map", "0:a:0"]
     cmd += ["-vf", ",".join(filters)]
     if has_audio:
-        cmd += ["-af", "asetpts=PTS-STARTPTS,aformat=sample_fmts=fltp:channel_layouts=stereo,aresample=48000"]
+        cmd += ["-af", clip_audio_filter(clip.gain)]
     cmd += ["-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-pix_fmt", "yuv420p"]
     if has_audio:
         cmd += ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
@@ -306,6 +345,37 @@ def _join(
         cmd += ["-an"]
     cmd += ["-movflags", "+faststart", str(output)]
     run(cmd)
+
+
+def clip_audio_filter(gain: float = 1.0) -> str:
+    chain = "asetpts=PTS-STARTPTS,aformat=sample_fmts=fltp:channel_layouts=stereo,aresample=48000"
+    if abs(gain - 1.0) >= 0.001:
+        return f"volume={gain:.3f},{chain}"
+    return chain
+
+
+def _moment_gain(moment: dict) -> float:
+    raw = moment.get("gain", 1)
+    if isinstance(raw, bool):
+        return 1.0
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return 1.0
+    return min(2.0, max(0.0, value))
+
+
+def _caption_texts(brief: dict) -> list[list[str] | None] | None:
+    rows: list[list[str] | None] = []
+    custom = False
+    for moment in brief.get("moments") or []:
+        lines = moment.get("captions")
+        if isinstance(lines, list) and all(isinstance(line, str) for line in lines):
+            rows.append(lines)
+            custom = True
+        else:
+            rows.append(None)
+    return rows if custom else None
 
 
 def _concat_filter(count: int, has_audio: bool) -> str:

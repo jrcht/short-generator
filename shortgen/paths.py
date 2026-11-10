@@ -97,16 +97,25 @@ def _slug_is_free(slug: str, source: Path, root: Path) -> bool:
 
 def video_paths(source: Path, name: str = "main", root: Path | None = None) -> dict[str, Path | str]:
     root = root or find_root()
+    return named_paths(allocate_slug(source, root), name, source, root)
+
+
+def named_paths(
+    slug: str,
+    name: str = "main",
+    source: Path | None = None,
+    root: Path | None = None,
+) -> dict[str, Path | str]:
+    root = root or find_root()
     short_name = slug_text(name)
     if not short_name:
         raise SystemExit("Short name is empty. Pass something like --name payoff.")
-    slug = allocate_slug(source, root)
     base = root / "generated" / slug
     return {
         "root": root,
         "slug": slug,
         "name": short_name,
-        "source": source,
+        "source": source if source is not None else base / "source.json",
         "dir": base,
         "source_json": base / "source.json",
         "speakers": base / "speakers.json",
