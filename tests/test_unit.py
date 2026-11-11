@@ -267,7 +267,7 @@ class SkillTests(unittest.TestCase):
         found = sorted(path.name for path in root.iterdir() if path.is_dir())
         self.assertEqual(
             found,
-            ["brief-session", "cut-short", "generate-short", "transcribe-session"],
+            ["brief-session", "cut-short", "generate-short", "transcribe-session", "write-article"],
         )
         for name in found:
             text = (root / name / "SKILL.md").read_text(encoding="utf-8")
