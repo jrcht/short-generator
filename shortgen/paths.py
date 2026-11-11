@@ -128,6 +128,8 @@ def named_paths(
         "short_dir": base / "shorts" / short_name,
         "short": base / "shorts" / short_name / "short.mp4",
         "edit": base / "shorts" / short_name / "edit.json",
+        "article_dir": base / "article",
+        "article": base / "article" / "article.md",
         "work": base / "work",
     }
 

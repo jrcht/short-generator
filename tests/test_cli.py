@@ -78,3 +78,27 @@ class CliTests(unittest.TestCase):
             text = Path(markdown).read_text(encoding="utf-8")
             self.assertIn("Ada", text)
             self.assertIn("Hello there.", text)
+
+
+class FrameTests(unittest.TestCase):
+    def test_frame_writes_a_jpg_in_the_article_folder(self):
+        import shutil
+        import subprocess
+        if shutil.which("ffmpeg") is None:
+            self.skipTest("ffmpeg not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            video = root / "videos" / "s.mp4"
+            video.parent.mkdir()
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=2:r=25",
+                 "-pix_fmt", "yuv420p", str(video)],
+                check=True,
+            )
+            with patch.dict(os.environ, {"SHORTGEN_ROOT": str(root)}):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    code = main(["frame", str(video), "--at", "1", "--name", "Hero"])
+            self.assertEqual(code, 0)
+            self.assertEqual(stdout.getvalue().strip(), "generated/s/article/hero.jpg")
+            self.assertTrue((root / "generated/s/article/hero.jpg").is_file())

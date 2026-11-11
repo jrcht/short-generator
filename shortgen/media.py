@@ -74,3 +74,13 @@ def _fps_ok(fps: str) -> bool:
         return float(fps) > 0
     except ValueError:
         return False
+
+
+def extract_frame(source: Path, seconds: float, out: Path) -> None:
+    """Write one still from the source at the given time. Fails if the time is past the end."""
+    require_ffmpeg()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    run(["ffmpeg", "-y", "-v", "error", "-ss", f"{seconds:.3f}", "-i", str(source),
+         "-frames:v", "1", "-q:v", "2", str(out)])
+    if not out.is_file():
+        raise SystemExit(f"No frame at {seconds:.3f}s. The video may end before that.")

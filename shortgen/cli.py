@@ -10,8 +10,10 @@ from pathlib import Path
 
 from shortgen.brief import check_brief, load_brief, render_brief
 from shortgen.cut import cut_video, default_brief_path
-from shortgen.paths import display_path, find_root, resolve_existing, resolve_source, video_paths
+from shortgen.media import extract_frame
+from shortgen.paths import display_path, find_root, resolve_existing, resolve_source, slug_text, video_paths
 from shortgen.segments import load_words
+from shortgen.timeutil import parse_timecode
 from shortgen.transcribe import render_transcript, transcribe
 from shortgen.view import run_viewer
 
@@ -70,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     cut_cmd.set_defaults(func=_cmd_cut)
 
+    frame_cmd = commands.add_parser("frame", help="Save a still from the session for the web article.")
+    frame_cmd.add_argument("video")
+    frame_cmd.add_argument("--at", required=True, help="Time in seconds or HH:MM:SS.mmm.")
+    frame_cmd.add_argument("--name", required=True, help="File name slug, for example hero. Written as <name>.jpg.")
+    frame_cmd.set_defaults(func=_cmd_frame)
+
     view_cmd = commands.add_parser("view", help="Open a player to trim, set the transition, voice, and subtitles.")
     view_cmd.add_argument("video")
     view_cmd.add_argument("--name", default="main", help="Short name. Default: main.")
@@ -99,10 +107,26 @@ def _cmd_path(args: argparse.Namespace) -> int:
         "brief_md": display_path(paths["brief_md"]),
         "brief_exists": paths["brief_json"].is_file(),
         "short": display_path(paths["short"]),
+        "article": display_path(paths["article"]),
+        "article_exists": paths["article"].is_file(),
         "short_exists": paths["short"].is_file(),
         "speakers": display_path(paths["speakers"]),
     }
     print(json.dumps(report, indent=2))
+    return 0
+
+
+def _cmd_frame(args: argparse.Namespace) -> int:
+    source = resolve_source(args.video)
+    paths = video_paths(source)
+    name = slug_text(args.name)
+    if not name:
+        print("--name is empty. Pass something like hero.", file=sys.stderr)
+        return 1
+    seconds = parse_timecode(args.at)
+    out = paths["article_dir"] / f"{name}.jpg"
+    extract_frame(source, seconds, out)
+    print(display_path(out))
     return 0
 
 

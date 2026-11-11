@@ -21,6 +21,9 @@ generated/<slug>/
   brief/
     main.json            the cut contract, safe to edit by hand
     main.md              the same brief, for reading
+  article/
+    article.md           the web article
+    hero.jpg             one or two stills from the session
   shorts/
     main/
       short.mp4
@@ -67,6 +70,14 @@ python -m shortgen cut videos/session.mp4
 ```
 
 `brief check` prints `ok` when the brief can be cut. The short's path is the stdout of `cut`.
+
+## Write an article
+
+```
+write an article for video videos/session.mp4
+```
+
+An agent following `skills/write-article` reads the transcript, writes `generated/<slug>/article/article.md`, and saves one or two stills next to it. It needs the transcript, not a brief or a short. The stills come from `python -m shortgen frame <video> --at <time> --name hero`.
 
 ## Run one step again
 
