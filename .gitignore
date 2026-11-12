@@ -17,3 +17,7 @@ generated/**/*.mov
 generated/**/*.mkv
 generated/**/*.wav
 generated/**/*.rendering.mp4
+
+# Session outputs: transcripts, briefs, articles, shorts
+generated/*
+!generated/.gitkeep
